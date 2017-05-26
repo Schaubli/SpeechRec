@@ -37,6 +37,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -178,6 +179,15 @@ public class PocketSphinxActivity extends Activity implements
         ((TextView) findViewById(R.id.result_text)).setText("");
         if (hypothesis != null) {
             String text = hypothesis.getHypstr();
+            Log.d("OnResult","Got result '"+hypothesis.getHypstr()+"' with score "+hypothesis.getBestScore() +" and prob "+hypothesis.getProb());
+            //edu.cmu.pocketsphinx.
+            //Log.d("OnResult", "Probability: "+hypothesis.);
+            //10^score_best/sum(10^score_i, for all i)
+            /*int sum = 0;
+            hypothesis.
+            for(int i=0; i<hypothesis.)
+            Log.d("OnResult", "Probability: "+);
+            edu.cmu.pocketsphinx.*/
             makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
         }
     }
