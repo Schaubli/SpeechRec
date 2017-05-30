@@ -38,6 +38,8 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -64,7 +66,7 @@ public class PocketSphinxActivity extends Activity implements
     private static final String MENU_SEARCH = "menu";
 
     /* Keyword we are looking for to activate menu */
-    private static final String KEYPHRASE = "alexa";
+    private static String KEYPHRASE = "alexa";
 
     /* Used to handle permission request */
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -148,6 +150,13 @@ public class PocketSphinxActivity extends Activity implements
         }
     }
 
+    public void onEnterName(View view) {
+        KEYPHRASE = ((EditText) findViewById(R.id.et_name)).getText().toString();
+        Log.d("OnEnterName", "Keyword changed to "+KEYPHRASE);
+        recognizer.stop();
+        recognizer.startListening(KWS_SEARCH);
+    }
+
     /**
      * In partial result we get quick updates about current hypothesis. In
      * keyword spotting mode we can react here, in other modes we need to wait
@@ -158,17 +167,22 @@ public class PocketSphinxActivity extends Activity implements
         if (hypothesis == null)
             return;
 
+        Log.d("OnResult","Got Result '"+hypothesis.getHypstr()+"' with score "+hypothesis.getBestScore() +" and prob "+hypothesis.getProb());
         String text = hypothesis.getHypstr();
-        if (text.equals(KEYPHRASE))
-            switchSearch(MENU_SEARCH);
-        else if (text.equals(DIGITS_SEARCH))
+        if (text.equals(KEYPHRASE)) {
+            ((TextView) findViewById(R.id.result_text)).setText(text);
+            recognizer.stop();
+            recognizer.startListening(KWS_SEARCH);
+        }
+            //switchSearch(MENU_SEARCH);
+        /*if (text.equals(DIGITS_SEARCH))
             switchSearch(DIGITS_SEARCH);
         else if (text.equals(PHONE_SEARCH))
             switchSearch(PHONE_SEARCH);
         else if (text.equals(FORECAST_SEARCH))
             switchSearch(FORECAST_SEARCH);
         else
-            ((TextView) findViewById(R.id.result_text)).setText(text);
+            ((TextView) findViewById(R.id.result_text)).setText(text);*/
     }
 
     /**
@@ -180,6 +194,7 @@ public class PocketSphinxActivity extends Activity implements
         if (hypothesis != null) {
             String text = hypothesis.getHypstr();
             Log.d("OnResult","Got result '"+hypothesis.getHypstr()+"' with score "+hypothesis.getBestScore() +" and prob "+hypothesis.getProb());
+            Log.d("OnResult","Relative score "+hypothesis.getBestScore()/hypothesis.getHypstr().length());
             //edu.cmu.pocketsphinx.
             //Log.d("OnResult", "Probability: "+hypothesis.);
             //10^score_best/sum(10^score_i, for all i)
@@ -201,18 +216,19 @@ public class PocketSphinxActivity extends Activity implements
      */
     @Override
     public void onEndOfSpeech() {
-        if (!recognizer.getSearchName().equals(KWS_SEARCH))
-            switchSearch(KWS_SEARCH);
+
+        //if (!recognizer.getSearchName().equals(KWS_SEARCH))
+            //switchSearch(KWS_SEARCH);
     }
 
     private void switchSearch(String searchName) {
-        recognizer.stop();
-
+        //recognizer.stop();
+        recognizer.startListening(searchName);
         // If we are not spotting, start listening with timeout (10000 ms or 10 seconds).
-        if (searchName.equals(KWS_SEARCH))
+        /*if (searchName.equals(KWS_SEARCH))
             recognizer.startListening(searchName);
         else
-            recognizer.startListening(searchName, 10000);
+            recognizer.startListening(searchName, 10000);*/
 
         String caption = getResources().getString(captions.get(searchName));
         ((TextView) findViewById(R.id.caption_text)).setText(caption);
@@ -222,11 +238,14 @@ public class PocketSphinxActivity extends Activity implements
         // The recognizer can be configured to perform multiple searches
         // of different kind and switch between them
 
+        String _keyphrase;
+        float _threshold;
+
         recognizer = SpeechRecognizerSetup.defaultSetup()
                 .setAcousticModel(new File(assetsDir, "en-us-ptm"))
                 .setDictionary(new File(assetsDir, "cmudict-en-us.dict"))
-
-                .setRawLogDir(assetsDir) // To disable logging of raw audio comment out this call (takes a lot of space on the device)
+                //.setKeywordThreshold(0.8f)
+                //.setRawLogDir(assetsDir) // To disable logging of raw audio comment out this call (takes a lot of space on the device)
 
                 .getRecognizer();
         recognizer.addListener(this);
@@ -238,7 +257,7 @@ public class PocketSphinxActivity extends Activity implements
         // Create keyword-activation search.
         recognizer.addKeyphraseSearch(KWS_SEARCH, KEYPHRASE);
 
-        // Create grammar-based search for selection between demos
+        /*// Create grammar-based search for selection between demos
         File menuGrammar = new File(assetsDir, "menu.gram");
         recognizer.addGrammarSearch(MENU_SEARCH, menuGrammar);
 
@@ -252,7 +271,7 @@ public class PocketSphinxActivity extends Activity implements
 
         // Phonetic search
         File phoneticModel = new File(assetsDir, "en-phone.dmp");
-        recognizer.addAllphoneSearch(PHONE_SEARCH, phoneticModel);
+        recognizer.addAllphoneSearch(PHONE_SEARCH, phoneticModel);*/
     }
 
     @Override
