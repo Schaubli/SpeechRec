@@ -1,92 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp">
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="10dp" />
-
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Status text"
-        android:textAlignment="inherit"
-        android:textAppearance="?android:attr/textAppearanceMedium"
-        android:textColor="?android:attr/panelBackground" />
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="20dp" />
-
-    <TextView
-        android:id="@+id/textView2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Your name"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
-
-    <EditText
-        android:id="@+id/et_name"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ems="10"
-        android:inputType="textPersonName"
-        android:selectAllOnFocus="true"
-        android:text="@string/ti_name"
-        android:textColor="@color/primaryText" />
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="20dp" />
-
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Confidence"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
-
-    <SeekBar
-        android:id="@+id/seekBar"
-        style="@style/Widget.AppCompat.SeekBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="100"
-        android:progress="50" />
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="10dp"
-        android:layout_weight="1"
-        android:textAlignment="center" />
-
-    <TextView
-        android:id="@+id/seekBarValue"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="50%"
-        android:textAlignment="center" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:textAlignment="center">
+        android:orientation="vertical">
 
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Status text"
+            android:textAlignment="inherit"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textColor="?android:attr/panelBackground" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="20dp" />
+
+        <TextView
+            android:id="@+id/textView2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Your name"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+
+        <EditText
+            android:id="@+id/et_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:inputType="textPersonName"
+            android:selectAllOnFocus="true"
+            android:text="@string/ti_name"
+            android:textColor="@color/primaryText" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="20dp" />
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Confidence"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_weight="1"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/seekBarValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="50%"
+            android:textAlignment="center" />
+
+        <SeekBar
+            android:id="@+id/seekBar"
+            style="@style/Widget.AppCompat.SeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="50" />
+
+        <TextView
+            android:id="@+id/seekBarSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="less = easier recognized"
+            android:textAppearance="@android:style/TextAppearance.DeviceDefault.Small"
+            android:textColor="@android:color/darker_gray" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/seekBarSubtitle"
+    <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="less = easier recognized"
-        android:textAppearance="@android:style/TextAppearance.DeviceDefault.Small"
-        android:textColor="@android:color/darker_gray" />
+        android:layout_height="match_parent">
+
+        <TextView
+            android:id="@+id/textView3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:layout_marginTop="8dp"
+            android:text="made by Jonas Kammerer &amp; Linus Schaub"
+            android:textColor="@android:color/darker_gray"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintHorizontal_bias="0.533"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.952" />
+    </android.support.constraint.ConstraintLayout>
 
 </LinearLayout>
