@@ -31,10 +31,13 @@
 package edu.cmu.pocketsphinx.demo;
 
 import android.Manifest;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.text.Editable;
@@ -63,15 +66,22 @@ public class PocketSphinxActivity extends Activity implements
     /* Keyword we are looking for to activate menu */
     private static String keyword = "alexa";
     private static float keywordThreshold = 50f;
+    public static int audioRecoveryDelay = 6000; //in ms
+    public static int audioRecoverySpeed = 350; //in ms per volume step
+    public static float audioReduction = 0.2f; // between 0 an 1
     private static String KWS_SEARCH = "Default search";
     public boolean isStarting = false;
     public boolean hasUpdate = false;
+    private boolean isVolumeReduced = false;
     private static String debugPrefix = "earbuddy ";
+    private static int lastDefaultVolume;
 
     /* Used to handle permission request */
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
 
     private SpeechRecognizer recognizer;
+    private AudioManager audio;
+
 
     @Override
     public void onCreate(Bundle state) {
@@ -93,7 +103,45 @@ public class PocketSphinxActivity extends Activity implements
         keyword = ((EditText) findViewById(R.id.et_name)).getText().toString();
         runRecognizerSetup();
         addListeners();
+
+        audio = (AudioManager) getSystemService(this.AUDIO_SERVICE);
+
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
+
+
+    private void onRecognizedKeyword() {
+        final int defaultVolume = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+        final int loweredVolume = Math.max((int) (defaultVolume*audioReduction),1);
+
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, loweredVolume, AudioManager.MODE_NORMAL);
+        lastDefaultVolume = defaultVolume;
+
+        isVolumeReduced = true;
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i<(defaultVolume-loweredVolume);i++) {
+                    final int newVolume = loweredVolume+i+1;
+                    final Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            audio.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, AudioManager.MODE_NORMAL);
+                            if( newVolume == defaultVolume) {
+                                if(recognizer != null) {
+                                    recognizer.startListening(KWS_SEARCH);
+                                }
+                                isVolumeReduced = false;
+                            }
+                        }
+                    }, audioRecoverySpeed+i*audioRecoverySpeed);
+                }
+            }
+        }, audioRecoveryDelay);
+    }
+
 
     private void addListeners() {
         ((SeekBar) findViewById(R.id.seekBar)).setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -263,6 +311,9 @@ public class PocketSphinxActivity extends Activity implements
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (isVolumeReduced) {
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, lastDefaultVolume, AudioManager.MODE_NORMAL);
+        }
         destroyRecognizer();
     }
 
@@ -294,9 +345,9 @@ public class PocketSphinxActivity extends Activity implements
         String text = hypothesis.getHypstr();
         if (text.equals(keyword.toLowerCase())&& recognizer != null) {
             recognizer.stop();
-            recognizer.startListening(KWS_SEARCH);
             Log.d(debugPrefix + "Recognization", "Recognized keyword \""+keyword+"\"");
             makeText(getApplicationContext(), "Keyword \""+keyword+"\" spotted", Toast.LENGTH_SHORT).show();
+            onRecognizedKeyword();
         }
     }
 
