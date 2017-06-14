@@ -64,7 +64,7 @@ public class PocketSphinxActivity extends Activity implements
 
     /* Keyword we are looking for to activate menu */
     public static String keyword = "alexa";
-    public static String confirmationKeyword = "Okay";
+    public static String confirmationKeyword = "Ja";
     public static float keywordThreshold = 50f;
     public static int audioRecoveryDelay = 5000; //in ms
     public static int audioRecoverySpeed = 10; //in ms per volume step
