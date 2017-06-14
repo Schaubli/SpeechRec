@@ -31,7 +31,6 @@
 package edu.cmu.pocketsphinx.demo;
 
 import android.Manifest;
-import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
@@ -64,14 +63,16 @@ public class PocketSphinxActivity extends Activity implements
 
 
     /* Keyword we are looking for to activate menu */
-    private static String keyword = "alexa";
-    private static float keywordThreshold = 50f;
-    public static int audioRecoveryDelay = 6000; //in ms
-    public static int audioRecoverySpeed = 350; //in ms per volume step
+    public static String keyword = "alexa";
+    public static String confirmationKeyword = "Okay";
+    public static float keywordThreshold = 50f;
+    public static int audioRecoveryDelay = 5000; //in ms
+    public static int audioRecoverySpeed = 10; //in ms per volume step
     public static float audioReduction = 0.2f; // between 0 an 1
     private static String KWS_SEARCH = "Default search";
-    public boolean isStarting = false;
-    public boolean hasUpdate = false;
+    private static String CONFIRM_SEARCH = "Confirmation search";
+    private boolean isStarting = false;
+    private boolean hasUpdate = false;
     private boolean isVolumeReduced = false;
     private static String debugPrefix = "earbuddy ";
     private static int lastDefaultVolume;
@@ -112,7 +113,7 @@ public class PocketSphinxActivity extends Activity implements
 
     private void onRecognizedKeyword() {
         final int defaultVolume = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
-        final int loweredVolume = Math.max((int) (defaultVolume*audioReduction),1);
+        final int loweredVolume = Math.max((int) (audioReduction>0?(defaultVolume*audioReduction):0),1);
 
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, loweredVolume, AudioManager.MODE_NORMAL);
         lastDefaultVolume = defaultVolume;
@@ -128,6 +129,9 @@ public class PocketSphinxActivity extends Activity implements
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
+                            if(audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0) {
+                                return;
+                            }
                             audio.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, AudioManager.MODE_NORMAL);
                             if( newVolume == defaultVolume) {
                                 if(recognizer != null) {
@@ -144,12 +148,35 @@ public class PocketSphinxActivity extends Activity implements
 
 
     private void addListeners() {
+
+        ((EditText) findViewById(R.id.et_name)).addTextChangedListener(new TextWatcher() {
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                keyword = s.toString();
+                Log.d(debugPrefix + "Received Input", "Changed keyword to "+keyword);
+                changedRecognizerSettings();
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start,
+                                          int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start,
+                                      int before, int count) {
+                //if(s.length() != 0)
+                    //Field2.setText("");
+            }
+        });
+
         ((SeekBar) findViewById(R.id.seekBar)).setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 keywordThreshold = seekBar.getProgress();
-                Log.d(debugPrefix + "New Threshold","Changed threshold bar to "+seekBar.getProgress()+" ");
+                Log.d(debugPrefix + "Received Input","Changed threshold bar to "+seekBar.getProgress()+" ");
                 changedRecognizerSettings();
             }
 
@@ -165,26 +192,24 @@ public class PocketSphinxActivity extends Activity implements
 
         });
 
-        ((EditText) findViewById(R.id.et_name)).addTextChangedListener(new TextWatcher() {
+        ((SeekBar) findViewById(R.id.volumeReductionSeekBar)).setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
             @Override
-            public void afterTextChanged(Editable s) {
-                keyword = s.toString();
-                Log.d(debugPrefix + "ChangedKeyword", "Changed keyword to "+keyword);
-                changedRecognizerSettings();
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                audioReduction = seekBar.getProgress()/100f;
+                Log.d(debugPrefix + "Received Input","Changed volume reduction bar to "+audioReduction);
             }
 
             @Override
-            public void beforeTextChanged(CharSequence s, int start,
-                                          int count, int after) {
-            }
+            public void onStartTrackingTouch(SeekBar seekBar){}
+
 
             @Override
-            public void onTextChanged(CharSequence s, int start,
-                                      int before, int count) {
-                //if(s.length() != 0)
-                    //Field2.setText("");
+            public void onProgressChanged(SeekBar seekBar, int progress,boolean fromUser) {
+                ((TextView) findViewById(R.id.volumeReductionSeekBarValue)).setText(progress+"%");
+                 /* t1.setTextSize(progress); Toast.makeText(getApplicationContext(), String.valueOf(progress),Toast.LENGTH_LONG).show();*/
             }
+
         });
     }
 
@@ -291,6 +316,7 @@ public class PocketSphinxActivity extends Activity implements
         recognizer.addListener(this);
         // Create keyword-activation search.
         recognizer.addKeyphraseSearch(KWS_SEARCH, keyword.toLowerCase());
+        recognizer.addKeyphraseSearch(CONFIRM_SEARCH, confirmationKeyword.toLowerCase());
     }
 
     @Override
@@ -343,11 +369,18 @@ public class PocketSphinxActivity extends Activity implements
         }
 
         String text = hypothesis.getHypstr();
-        if (text.equals(keyword.toLowerCase())&& recognizer != null) {
+        if (isVolumeReduced == false && text.equals(keyword.toLowerCase())&& recognizer != null) {
             recognizer.stop();
+            recognizer.startListening(CONFIRM_SEARCH);
             Log.d(debugPrefix + "Recognization", "Recognized keyword \""+keyword+"\"");
             makeText(getApplicationContext(), "Keyword \""+keyword+"\" spotted", Toast.LENGTH_SHORT).show();
             onRecognizedKeyword();
+        } else if(isVolumeReduced && text.equals(confirmationKeyword.toLowerCase())) {
+            recognizer.stop();
+            isVolumeReduced = false;
+            makeText(getApplicationContext(), "Confirmation \""+confirmationKeyword+"\" spotted", Toast.LENGTH_SHORT).show();
+            audio.setStreamMute(AudioManager.STREAM_MUSIC,true);
+            recognizer.startListening(KWS_SEARCH);
         }
     }
 
