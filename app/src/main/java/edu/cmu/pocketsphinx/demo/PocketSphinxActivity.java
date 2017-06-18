@@ -39,9 +39,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.widget.AppCompatImageView;
+import android.support.v7.widget.CardView;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -49,6 +52,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 
 import edu.cmu.pocketsphinx.Assets;
 import edu.cmu.pocketsphinx.Hypothesis;
@@ -64,18 +68,23 @@ public class PocketSphinxActivity extends Activity implements
 
     /* Keyword we are looking for to activate menu */
     public static String keyword = "alexa";
-    public static String confirmationKeyword = "Okay";
+    public static String confirmationKeyword = "Ja";
     public static float keywordThreshold = 50f;
     public static int audioRecoveryDelay = 5000; //in ms
-    public static int audioRecoverySpeed = 10; //in ms per volume step
+    public static int audioRecoverySpeed = 350; //in ms per volume step
     public static float audioReduction = 0.2f; // between 0 an 1
     private static String KWS_SEARCH = "Default search";
     private static String CONFIRM_SEARCH = "Confirmation search";
     private boolean isStarting = false;
     private boolean hasUpdate = false;
     private boolean isVolumeReduced = false;
+    private boolean isVolumeMuted = false;
     private static String debugPrefix = "earbuddy ";
     private static int lastDefaultVolume;
+    private static int audioFull = R.drawable.ic_volume_up_black_24dp;
+    private static int audioLow = R.drawable.ic_volume_down_black_24dp;
+    private static int audioOff = R.drawable.ic_volume_mute_black_24dp;
+
 
     /* Used to handle permission request */
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -107,6 +116,7 @@ public class PocketSphinxActivity extends Activity implements
 
         audio = (AudioManager) getSystemService(this.AUDIO_SERVICE);
 
+        setStatusImage(audioFull);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
@@ -118,7 +128,6 @@ public class PocketSphinxActivity extends Activity implements
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, loweredVolume, AudioManager.MODE_NORMAL);
         lastDefaultVolume = defaultVolume;
 
-        isVolumeReduced = true;
         final Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
             @Override
@@ -135,15 +144,34 @@ public class PocketSphinxActivity extends Activity implements
                             audio.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, AudioManager.MODE_NORMAL);
                             if( newVolume == defaultVolume) {
                                 if(recognizer != null) {
+                                    recognizer.stop();
                                     recognizer.startListening(KWS_SEARCH);
                                 }
                                 isVolumeReduced = false;
+                                setStatusImage(audioFull);
                             }
                         }
                     }, audioRecoverySpeed+i*audioRecoverySpeed);
                 }
             }
         }, audioRecoveryDelay);
+    }
+
+    private void smoothVolume(int newVolume) {
+        audio.setStreamMute(AudioManager.STREAM_MUSIC, false);
+        final int startVolume = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+        int direction = newVolume>startVolume?1:-1;
+        for (int i = 0; i<Math.abs(startVolume-newVolume);i++) {
+            final int nextVolume = startVolume+i+direction;
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, nextVolume, AudioManager.MODE_NORMAL);
+
+                }
+            }, audioRecoverySpeed+i*audioRecoverySpeed);
+        }
     }
 
 
@@ -211,11 +239,23 @@ public class PocketSphinxActivity extends Activity implements
             }
 
         });
+
+        AppCompatImageView img = (AppCompatImageView) findViewById(R.id.status_image);
+        img.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if(isVolumeMuted) {
+                    isVolumeMuted = false;
+                    setStatusImage(audioFull);
+                    smoothVolume(lastDefaultVolume);
+                    recognizer.startListening(KWS_SEARCH);
+                }
+            }
+        });
     }
 
 
     public void changedRecognizerSettings() {
-        Log.d("OnChangedValue", "Restarting recognizer with keyword "+keyword+" and threshold of "+keywordThreshold);
+        Log.d(debugPrefix+"OnChangedValue", "Restarting recognizer with keyword "+keyword+" and threshold of "+keywordThreshold);
         setStatusText("Restarting...");
         restartRecognizer();
     }
@@ -232,6 +272,18 @@ public class PocketSphinxActivity extends Activity implements
     public void setStatusText(String s) {
         ((TextView) findViewById(R.id.status_text)).setText(s);
     }
+
+    private void setStatusImage(int image) {
+        ((AppCompatImageView) findViewById(R.id.status_image)).setImageResource(image);
+        if(image == audioOff) {
+            ((CardView) findViewById(R.id.status_image_card)).setCardElevation(5);
+        } else {
+            ((CardView) findViewById(R.id.status_image_card)).setCardElevation(0);
+        }
+    }
+
+
+
 
     private void runRecognizerSetup() {
         // Recognizer initialization is a time-consuming and it involves IO,
@@ -264,7 +316,6 @@ public class PocketSphinxActivity extends Activity implements
                     }
                     if(result.getMessage().contains("Microphone")){
                         //restartRecognizer();
-                        return;
                     }
                     setStatusText("Error: " + result.getMessage());
                 } else {
@@ -282,7 +333,6 @@ public class PocketSphinxActivity extends Activity implements
             }
         }.execute();
     }
-
 
     private void setupRecognizer(File assetsDir) throws IOException {
         // The recognizer can be configured to perform multiple searches
@@ -369,18 +419,31 @@ public class PocketSphinxActivity extends Activity implements
         }
 
         String text = hypothesis.getHypstr();
-        if (isVolumeReduced == false && text.equals(keyword.toLowerCase())&& recognizer != null) {
+        if (isVolumeReduced == false && isVolumeMuted == false && text.equals(keyword.toLowerCase())&& recognizer != null) {
+            isVolumeReduced = true;
+            setStatusImage(audioLow);
             recognizer.stop();
             recognizer.startListening(CONFIRM_SEARCH);
             Log.d(debugPrefix + "Recognization", "Recognized keyword \""+keyword+"\"");
             makeText(getApplicationContext(), "Keyword \""+keyword+"\" spotted", Toast.LENGTH_SHORT).show();
             onRecognizedKeyword();
-        } else if(isVolumeReduced && text.equals(confirmationKeyword.toLowerCase())) {
-            recognizer.stop();
+        } else if (isVolumeReduced && isVolumeMuted == false &&  text.equals(confirmationKeyword.toLowerCase())) {
             isVolumeReduced = false;
-            makeText(getApplicationContext(), "Confirmation \""+confirmationKeyword+"\" spotted", Toast.LENGTH_SHORT).show();
-            audio.setStreamMute(AudioManager.STREAM_MUSIC,true);
+            isVolumeMuted = true;
+            setStatusImage(audioOff);
+            makeText(getApplicationContext(), "Confirmation \"" + confirmationKeyword + "\" spotted", Toast.LENGTH_SHORT).show();
+            audio.setStreamMute(AudioManager.STREAM_MUSIC, true);
+            recognizer.stop();
             recognizer.startListening(KWS_SEARCH);
+        } else if(isVolumeMuted == false){
+            Log.d(debugPrefix + "Recognization", "Ignoring keyword " + text);
+            recognizer.stop();
+            if (isVolumeReduced)
+            {
+                recognizer.startListening(CONFIRM_SEARCH);
+            } else {
+                recognizer.startListening(KWS_SEARCH);
+            }
         }
     }
 
